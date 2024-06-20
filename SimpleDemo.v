@@ -1054,6 +1054,9 @@ Module ImperativeModel.
     | Next : forall d e1 e2,
       models e1 d \/ models e2 d ->
       models (Sync e1 e2) d
+    | Divide2 : forall d e1 e2 e3,
+      models e1 d \/ models e2 d \/ models e3 d ->
+      models (Sync (Async e1 e2) e3) d
     | Permutation : forall d e1 e2,
       models e1 d /\ models e2 d -> 
       models (Async e1 e2) d
@@ -1157,7 +1160,7 @@ Module ImperativeTyped.
     
 End ImperativeTyped.
 
-
+(* 
 (* 
   How do we know if the type&effect system we implemented is correct?
   Our intention was to capture the ordering of tasks to ensure task dependency,
@@ -1171,7 +1174,7 @@ End ImperativeTyped.
 
 From Coq Require Import Multiset.
 From Coq Require Import Classes.EquivDec.
-
+From Coq Require Import String.
 From Coq Require Import Relations.Relation_Operators.
 
 Module ImperativeSemantics.
@@ -1181,13 +1184,12 @@ Module ImperativeSemantics.
   (* A process is a stament awaiting to be executed *)
   Definition process := statement.
 
-
   Definition pool := multiset process.
   (* 
     we are not storing variables, we just have running processes in the 
     context of a program
   *)
-  Definition configuration := (pool * program)%type.
+  Definition configuration := (SMAP.t (SMAP.t pool) * program)%type.
   (* 
     We don't produce a value, just an execution trace (to compare with our model)
   *)
@@ -1229,7 +1231,16 @@ Module ImperativeSemantics.
                             (Exp (call c m)))
                           (Exp exp2)), p), t)
   | S_seq : forall exp stmt1 p1 prog t,
-    0 < p1 (Seq exp stmt1) -> 
+    0 < p1 (Seq exp stmt1) ->
+    ~ exp = wait -> 
+    ((Bag p1, prog), t) => ((addToBag
+                              (addToBag
+                                (removeFromBag (Bag p1) (Seq exp stmt1))
+                                (Exp exp))
+                              (stmt1), prog), t)
+  | S_seq_wait : forall exp stmt1 p1 prog t,
+    0 < p1 (Seq exp stmt1) ->
+    exp = wait -> 
     ((Bag p1, prog), t) => ((addToBag
                               (addToBag
                                 (removeFromBag (Bag p1) (Seq exp stmt1))
@@ -1275,4 +1286,4 @@ Given that is not relevant (YET) I'm sticking to this shorter proof.*)
 End ImperativeSemantics.
 
 
-
+ *)
